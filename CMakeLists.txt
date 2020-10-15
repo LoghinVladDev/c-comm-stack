@@ -18,15 +18,22 @@ set(
         src/connection/conn-private.h
 )
 
-add_executable(c-com-stack src/tests/comStackTest.c ${C_COM_STACK_SRC})
+if ( NOT TARGET c-com-stack )
+    add_executable(c-com-stack src/tests/comStackTest.c ${C_COM_STACK_SRC})
+    target_link_libraries(c-com-stack c-thread-lib)
+endif()
 
-target_link_libraries(c-com-stack c-thread-lib)
+if ( NOT TARGET comStackClientTest )
+    add_executable(comStackClientTest src/tests/comStackTestClient.c ${C_COM_STACK_SRC})
+    target_link_libraries(comStackClientTest c-thread-lib)
+endif()
 
-add_executable(comStackClientTest src/tests/comStackTestClient.c ${C_COM_STACK_SRC})
-target_link_libraries(comStackClientTest c-thread-lib)
+if ( NOT TARGET comStackServerTest )
+    add_executable(comStackServerTest src/tests/comStackTestServer.c ${C_COM_STACK_SRC})
+    target_link_libraries(comStackServerTest c-thread-lib)
+endif()
 
-add_executable(comStackServerTest src/tests/comStackTestServer.c ${C_COM_STACK_SRC})
-target_link_libraries(comStackServerTest c-thread-lib)
-
-add_library(c-com-stack-lib STATIC ${C_COM_STACK_SRC})
-target_link_libraries(c-com-stack-lib c-thread-lib)
+if ( NOT TARGET c-com-stack-lib )
+    add_library(c-com-stack-lib STATIC ${C_COM_STACK_SRC})
+    target_link_libraries(c-com-stack-lib c-thread-lib)
+endif()

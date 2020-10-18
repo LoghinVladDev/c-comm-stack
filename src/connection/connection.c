@@ -2,8 +2,8 @@
 // Created by vladl on 10/15/2020.
 //
 
-#include <conn.h>
-#include <conn-private.h>
+#include <connection.h>
+#include <connection-private.h>
 #include <memory.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -60,7 +60,7 @@ IPV4IP strToIPV4IP ( const char * pStr, char ** ppNext) {
     if ( ppNext != NULL )
         (* ppNext) = (endPtr - pStr > 3) ? (char*)pStr + 3 : endPtr;
 
-_ASSIGN_ADDR:
+    _ASSIGN_ADDR:
     address.firstEight  = (uint8) firstEight;
     address.secondEight = (uint8) secondEight;
     address.thirdEight  = (uint8) thirdEight;
@@ -132,6 +132,7 @@ ConnectionNodeData * getConnectionNode ( connection_t ID ) {
     pNewNode->port = 0U;
     pNewNode->socket = 0U;
     pNewNode->pNext = listHead;
+    pNewNode->connected = false;
 
     return ( connectionDataTable[ key ] = pNewNode );
 }
@@ -206,16 +207,19 @@ ComResult createIPV4Server ( uint16 port ) {
     if ( -1 == listen( serverSocket, SERVER_LISTEN_QUEUE_SIZE ) )
         return COM_SOCKET_LISTEN_FAILURE;
 
-    isServer = true;
+    _isServer = true;
     return COM_SUCCESS;
 }
 
 ComResult connectToServer ( connection_t ID ) {
     __auto_type pData = getConnectionNode ( ID );
+    if ( pData )
+        return COM_ID_PTR_NULL;
 
     if ( -1 == connect( pData->socket, ( struct sockaddr * ) & pData->inetAddr, sizeof ( struct sockaddr_in ) ) )
         return COM_CONNECT_FAIL;
 
+    pData->connected = true;
     return COM_SUCCESS;
 }
 
@@ -232,6 +236,7 @@ ComResult acceptClient ( connection_t * pID ) {
 
     pNode->port = serverPort;
     pNode->address = inetAddrToIPV4IP( pNode->inetAddr.sin_addr.s_addr );
+    pNode->connected = true;
 
     return COM_SUCCESS;
 }
@@ -264,8 +269,11 @@ ComResult stopComModule () {
 
 ComResult testConnection ( connection_t ID ) {
     __auto_type pNode = getConnectionNode( ID );
+    if ( pNode == NULL )
+        return COM_ID_PTR_NULL;
+
     char buffer[ SOCKET_READ_WRITE_BUFFER_SIZE ];
-    if ( isServer ) {
+    if ( _isServer ) {
         switch( read ( pNode->socket, buffer, SOCKET_READ_WRITE_BUFFER_SIZE ) ) {
             case SOCKET_READ_ERROR :        return COM_TRANSMIT_ERROR;
             case SOCKET_READ_DISCONNECT :   return COM_ERROR_DISCONNECT;
@@ -300,6 +308,9 @@ ComResult testConnection ( connection_t ID ) {
 }
 
 ComResult disconnect ( connection_t ID ) {
+    if ( ID == NULL_CONNECTION )
+        return COM_ID_PTR_NULL;
+
     close ( getConnectionNode(ID)->socket );
     removeConnectionNode( ID );
 
@@ -333,4 +344,153 @@ const char * comStackErrorToString ( ComResult errorStatus ) {
         case COM_SUCCESS:                   return "Success";
         default:                            return "Undefined behaviour";
     }
+}
+
+ComResult sendChar ( connection_t ID, char character ) {
+    __auto_type pNode = getConnectionNode( ID );
+    if ( pNode == NULL )
+        return COM_ID_PTR_NULL;
+
+    switch ( write ( pNode->socket, & character, sizeof ( char ) ) ) {
+        case SOCKET_WRITE_ERROR:    return COM_TRANSMIT_ERROR;
+        default:                    return COM_SUCCESS;
+    }
+}
+
+ComResult sendInt ( connection_t ID, int value ) {
+    __auto_type pNode = getConnectionNode( ID );
+    if ( pNode == NULL )
+        return COM_ID_PTR_NULL;
+
+    switch ( write ( pNode->socket, & value, sizeof ( int ) ) ) {
+        case SOCKET_WRITE_ERROR:    return COM_TRANSMIT_ERROR;
+        default:                    return COM_SUCCESS;
+    }
+}
+
+ComResult sendLong ( connection_t ID, long long value ) {
+    __auto_type pNode = getConnectionNode( ID );
+    if ( pNode == NULL )
+        return COM_ID_PTR_NULL;
+
+    switch ( write ( pNode->socket, & value, sizeof ( long long ) ) ) {
+        case SOCKET_WRITE_ERROR:    return COM_TRANSMIT_ERROR;
+        default:                    return COM_SUCCESS;
+    }
+}
+
+ComResult sendString ( connection_t ID, const char * str ) {
+    return sendBuffer ( ID, (const void*) str, strlen(str) );
+}
+
+ComResult sendBuffer ( connection_t ID, const void * pData, uint32 size ) {
+    __auto_type pNode = getConnectionNode( ID );
+    if ( pNode == NULL )
+        return COM_ID_PTR_NULL;
+
+    void * writeBuffer = NEW_COMM_BUFFER();
+    memcpy ( writeBuffer, pData, size > SOCKET_READ_WRITE_BUFFER_SIZE ? SOCKET_READ_WRITE_BUFFER_SIZE : size );
+
+    switch ( write ( pNode->socket, writeBuffer, SOCKET_READ_WRITE_BUFFER_SIZE ) ) {
+        case SOCKET_WRITE_ERROR:
+            free( writeBuffer );
+            return COM_TRANSMIT_ERROR;
+
+        default:
+            if ( size > SOCKET_READ_WRITE_BUFFER_SIZE ) {
+                free( writeBuffer );
+                return COM_WRITE_STRING_TRUNCATED;
+            }
+
+            free( writeBuffer );
+            return COM_SUCCESS;
+    }
+}
+
+ComResult readChar ( connection_t ID, char * pCharacter ) {
+    __auto_type pNode = getConnectionNode( ID );
+    if ( pNode == NULL )
+        return COM_ID_PTR_NULL;
+
+    switch ( read ( pNode->socket, pCharacter, sizeof ( char ) ) ) {
+        case SOCKET_READ_ERROR:         return COM_TRANSMIT_ERROR;
+        case SOCKET_READ_DISCONNECT:    return COM_ERROR_DISCONNECT;
+        default:
+            return COM_SUCCESS;
+    }
+}
+
+ComResult readInt ( connection_t ID, int * pValue ) {
+    __auto_type pNode = getConnectionNode( ID );
+    if ( pNode == NULL )
+        return COM_ID_PTR_NULL;
+
+    int bytesRead = read ( pNode->socket, pValue, sizeof ( int ) );
+
+    switch ( bytesRead ) {
+        case SOCKET_READ_ERROR:         return COM_TRANSMIT_ERROR;
+        case SOCKET_READ_DISCONNECT:    return COM_ERROR_DISCONNECT;
+        default:
+            if ( bytesRead < sizeof( int ) )
+                return COM_READ_VALUE_TRUNCATED;
+            return COM_SUCCESS;
+    }
+}
+
+ComResult readLong ( connection_t ID, long long * pValue ) {
+    __auto_type pNode = getConnectionNode( ID );
+    if ( pNode == NULL )
+        return COM_ID_PTR_NULL;
+
+    int bytesRead = read ( pNode->socket, pValue, sizeof ( long long ) );
+
+    switch ( bytesRead ) {
+        case SOCKET_READ_ERROR:         return COM_TRANSMIT_ERROR;
+        case SOCKET_READ_DISCONNECT:    return COM_ERROR_DISCONNECT;
+        default:
+            if ( bytesRead < sizeof( long long ) )
+                return COM_READ_VALUE_TRUNCATED;
+            return COM_SUCCESS;
+    }
+}
+
+ComResult readBuffer ( connection_t ID, void * pData, uint32 bufferSize ) {
+    __auto_type pNode = getConnectionNode( ID );
+    if ( pNode == NULL )
+        return COM_ID_PTR_NULL;
+
+    __auto_type buffer = NEW_COMM_BUFFER();
+
+    int bytesRead = read ( pNode->socket, buffer, SOCKET_READ_WRITE_BUFFER_SIZE );
+    memcpy ( pData, buffer, bufferSize > SOCKET_READ_WRITE_BUFFER_SIZE ? SOCKET_READ_WRITE_BUFFER_SIZE : bufferSize );
+
+    switch ( bytesRead ) {
+        case SOCKET_READ_ERROR:
+            free ( buffer );
+            return COM_TRANSMIT_ERROR;
+        case SOCKET_READ_DISCONNECT:
+            free ( buffer );
+            return COM_ERROR_DISCONNECT;
+        default:
+            if ( bytesRead < SOCKET_READ_WRITE_BUFFER_SIZE ) {
+                free ( buffer );
+                return COM_READ_VALUE_TRUNCATED;
+            }
+
+            free ( buffer );
+            return COM_SUCCESS;
+    }
+}
+
+ComResult readString ( connection_t ID, char * pData, uint32 length ) {
+    return readBuffer ( ID, (void*) pData, length );
+}
+
+bool isServer() {
+    return _isServer;
+}
+
+bool isConnected ( connection_t ID ) {
+    __auto_type pNode = getConnectionNode( ID );
+    return pNode == NULL ? false : pNode->connected;
 }

@@ -2,7 +2,7 @@
 #include <c-thread.h>
 #include <unistd.h>
 
-#include <conn.h>
+#include <connection.h>
 #include <malloc.h>
 #include <arpa/inet.h>
 

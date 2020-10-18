@@ -8,14 +8,19 @@ include_directories(dependencies/c-thread/include)
 include_directories(
         src/connection
         src/util
+        src/com
 )
 
 set(
         C_COM_STACK_SRC
-        src/connection/conn.c
-        src/connection/conn.h
+        src/connection/connection.c
+        src/connection/connection.h
         src/util/com_stack_types.h
-        src/connection/conn-private.h
+        src/connection/connection-private.h
+
+        src/com/com.c
+        src/com/com.h
+        src/com/com-private.h
 )
 
 if ( NOT TARGET c-com-stack )

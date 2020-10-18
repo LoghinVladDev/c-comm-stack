@@ -2,8 +2,8 @@
 // Created by vladl on 10/15/2020.
 //
 
-#ifndef C_COM_STACK_CONN_H
-#define C_COM_STACK_CONN_H
+#ifndef C_COM_STACK_CONNECTION_H
+#define C_COM_STACK_CONNECTION_H
 
 #define LOCALHOST ( (IPV4IP) {.addr = ( ( 127U << 24U ) | ( 0U << 16U ) | ( 0U << 8U ) | ( 1U << 0U ) ) } )
 
@@ -33,6 +33,21 @@ char * IPV4IPToStr ( IPV4IP, char * ); /// implemented
 in_addr_t IPV4IPToInAddr ( IPV4IP ); /// implemented
 IPV4IP inetAddrToIPV4IP ( in_addr_t ); /// implemented
 
-const char * comStackErrorToString ( ComResult );
+const char * comStackErrorToString ( ComResult ); /// implemented
 
-#endif //C_COM_STACK_CONN_H
+ComResult sendChar ( connection_t, char ); /// implemented
+ComResult sendInt ( connection_t, int ); /// implemented
+ComResult sendLong ( connection_t, long long ); /// implemented
+ComResult sendString ( connection_t, const char * ); /// implemented
+ComResult sendBuffer ( connection_t, const void *, uint32 ); /// implemented
+
+ComResult readChar ( connection_t, char * );
+ComResult readInt ( connection_t, int * );
+ComResult readLong ( connection_t, long long * );
+ComResult readString ( connection_t, char *, uint32 );
+ComResult readBuffer ( connection_t, void *, uint32 );
+
+bool isServer();
+bool isConnected ( connection_t );
+
+#endif //C_COM_STACK_CONNECTION_H

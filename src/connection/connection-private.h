@@ -2,8 +2,8 @@
 // Created by vladl on 10/15/2020.
 //
 
-#ifndef C_COM_STACK_CONN_PRIVATE_H
-#define C_COM_STACK_CONN_PRIVATE_H
+#ifndef C_COM_STACK_CONNECTION_PRIVATE_H
+#define C_COM_STACK_CONNECTION_PRIVATE_H
 
 #include <com_stack_types.h>
 
@@ -13,7 +13,7 @@
 #include <netinet/in.h>
 
 #ifndef __cplusplus
-#define NEW(_type) ( ( _type * ) malloc ( sizeof ( _type ) ) )
+#define NEW_COMM_BUFFER() ( NEW_ARR(void, SOCKET_READ_WRITE_BUFFER_SIZE) )
 #endif
 
 #if CONN_HASH_TABLE_SIZE <= UINT8_MAX + 1
@@ -44,6 +44,7 @@ typedef struct ConnectionNodeData {
     uint16                      port;
     struct sockaddr_in          inetAddr;
     struct ConnectionNodeData * pNext;
+    bool                        connected;
 } ConnectionNodeData;
 
 static connection_t currentConnectionIndex = NULL_CONNECTION + 1;
@@ -55,7 +56,7 @@ static void                 removeConnectionNode ( connection_t );
 static int serverSocket = 0U;
 static uint16 serverPort = 0U;
 
-static bool isServer = false;
+static bool _isServer = false; // NOLINT(bugprone-reserved-identifier)
 
 static bool isDigit(char);
 static bool isUpper(char);
@@ -65,4 +66,4 @@ static uint32 getFirst3Digits (uint32);
 
 static void freeConnections ();
 
-#endif //C_COM_STACK_CONN_PRIVATE_H
+#endif //C_COM_STACK_CONNECTION_PRIVATE_H

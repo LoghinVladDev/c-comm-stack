@@ -39,6 +39,12 @@
 #define LITTLE_ENDIAN
 #endif
 
+#ifndef __cplusplus
+#include <stdlib.h>
+#define NEW(_type) ( ( _type * ) malloc ( sizeof ( _type ) ) )
+#define NEW_ARR(_type, _size) ( ( _type * ) malloc ( sizeof ( _type ) * _size ) )
+#endif
+
 typedef unsigned char uint8;
 typedef unsigned short uint16;
 typedef unsigned int uint32;
@@ -66,6 +72,7 @@ typedef uint8 bool;
 #define NULL_CONNECTION ((uint64)0U)
 
 typedef uint64 connection_t;
+typedef uint64 com_t;
 
 typedef enum {
     COM_ID_PTR_NULL,
@@ -82,11 +89,26 @@ typedef enum {
     COM_ERROR_DISCONNECT,
     COM_TRANSMIT_ERROR,
 
+    COM_WRITE_STRING_TRUNCATED,
+    COM_READ_VALUE_TRUNCATED,
+
     COM_TEST_CLIENT_NOT_OK,
     COM_TEST_SERVER_NOT_OK,
 
+    COM_NOT_CONNECTED,
+
+    COM_OUTGOING_THREAD_FAIL,
+    COM_INGOING_THREAD_FAIL,
+
     COM_SUCCESS
 } ComResult;
+
+//typedef enum ConnectionStackHandling {
+//    NO_STACK,
+//    TICK_BASED,
+//    ASYNCHRONOUS
+//} ComStackHandling;
+
 
 #if defined(LITTLE_ENDIAN)
 typedef union {
